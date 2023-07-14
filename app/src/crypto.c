@@ -87,14 +87,46 @@ __Z_INLINE zxerr_t compressPubkey(const uint8_t *pubkey, uint16_t pubkeyLen, uin
     return zxerr_ok;
 }
 
+
+static zxerr_t crypto_hashBuffer(const uint8_t *input, const uint16_t inputLen,
+                          uint8_t *output, uint16_t outputLen) {
+
+    switch (encoding) {
+        case BECH32_COSMOS: {
+            cx_hash_sha256(input, inputLen, output, outputLen);
+            break;
+        }
+
+        case BECH32_ETH: {
+            cx_sha3_t sha3 = {0};
+            cx_err_t status = cx_keccak_init_no_throw(&sha3, 256);
+            if (status != CX_OK) {
+                 return zxerr_ledger_api_error;
+            }
+            status = cx_hash_no_throw((cx_hash_t*) &sha3, CX_LAST, input, inputLen, output, outputLen);
+            if (status != CX_OK) {
+                return zxerr_ledger_api_error;
+            }
+            break;
+        }
+
+        default:
+            return zxerr_unknown;
+    }
+    return zxerr_ok;
+}
+
 zxerr_t crypto_sign(uint8_t *signature,
-                    uint16_t signatureMaxlen,
-                    uint16_t *sigSize) {
+                   uint16_t signatureMaxlen,
+                   uint16_t *sigSize) {
     uint8_t messageDigest[CX_SHA256_SIZE] = {0};
 
     // Hash it
     const uint8_t *message = tx_get_buffer();
     const uint16_t messageLen = tx_get_buffer_length();
+
+    CHECK_ZXERR(crypto_hashBuffer(message, messageLen, messageDigest, CX_SHA256_SIZE))
+    CHECK_APP_CANARY()
 
     switch (encoding) {
         case BECH32_COSMOS: {

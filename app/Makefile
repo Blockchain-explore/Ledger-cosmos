@@ -1,6 +1,6 @@
 #*******************************************************************************
 #  Ledger App
-#  (c) 2018 - 2022 Zondax GmbH
+#  (c) 2018 - 2023 Zondax AG
 #  (c) 2017 Ledger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,6 @@ APPPATH = "44'/118'" --path "44'/60'"
 else
 define error_message
 
-
 COIN value not supported: [$(COIN)]
 
 endef
@@ -53,7 +52,7 @@ endif
 
 APP_LOAD_PARAMS = --curve secp256k1 $(COMMON_LOAD_PARAMS) --path $(APPPATH)
 
-NANOS_STACK_SIZE:=1815
+NANOS_STACK_SIZE := 1850
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])

@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2018, 2019 Zondax GmbH
+*   (c) 2018 - 2023 Zondax AG
 *   (c) 2016 Ledger
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,9 @@ __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile 
     G_io_apdu_buffer[1] = LEDGER_MAJOR_VERSION;
     G_io_apdu_buffer[2] = LEDGER_MINOR_VERSION;
     G_io_apdu_buffer[3] = LEDGER_PATCH_VERSION;
-    G_io_apdu_buffer[4] = !IS_UX_ALLOWED;
+    // SDK won't let the app reply an apdu message if screensaver is active
+    // device_locked field --> Always false
+    G_io_apdu_buffer[4] = 0;
 
     G_io_apdu_buffer[5] = (TARGET_ID >> 24) & 0xFF;
     G_io_apdu_buffer[6] = (TARGET_ID >> 16) & 0xFF;
@@ -93,7 +95,6 @@ static bool process_chunk(volatile uint32_t *tx, uint32_t rx) {
     UNUSED(tx);
 
     const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
-
     if (rx < OFFSET_DATA) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
@@ -166,7 +167,6 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
         THROW(APDU_CODE_DATA_INVALID);
     }
     const char *error_msg = tx_parse(sign_type);
-
     if (error_msg != NULL) {
         int error_msg_length = strlen(error_msg);
         MEMCPY(G_io_apdu_buffer, error_msg, error_msg_length);

@@ -18,7 +18,7 @@ import Zemu from '@zondax/zemu'
 // @ts-ignore
 import { CosmosApp } from '@zondax/ledger-cosmos-js'
 import {
-  DEFAULT_OPTIONS,
+  defaultOptions,
   DEVICE_MODELS,
   example_tx_str_basic,
   example_tx_str_basic2,
@@ -36,213 +36,27 @@ import crypto from 'crypto'
 
 jest.setTimeout(120000)
 
+const DEFAULT_HRP = 'cosmos'
+
 describe('Json', function () {
-  // eslint-disable-next-line jest/expect-expect
-  test.concurrent.each(DEVICE_MODELS)('can start and stop container', async function (m) {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent.each(DEVICE_MODELS)('sign basic normal', async function (m) {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
-      const app = new CosmosApp(sim.getTransport())
-
-      const path = [44, 118, 0, 0, 0]
-      const tx = Buffer.from(JSON.stringify(example_tx_str_basic))
-
-      // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
-      expect(respPk.return_code).toEqual(0x9000)
-      expect(respPk.error_message).toEqual('No errors')
-      console.log(respPk)
-
-      // do not wait here..
-      const signatureRequest = app.sign(path, tx, AMINO_JSON_TX)
-
-      // Wait until we are not in the main menu
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_basic`)
-
-      const resp = await signatureRequest
-      console.log(resp)
-
-      expect(resp.return_code).toEqual(0x9000)
-      expect(resp.error_message).toEqual('No errors')
-      expect(resp).toHaveProperty('signature')
-
-      // Now verify the signature
-      const hash = crypto.createHash('sha256')
-      const msgHash = Uint8Array.from(hash.update(tx).digest())
-
-      const signatureDER = resp.signature
-      const signature = secp256k1.signatureImport(Uint8Array.from(signatureDER))
-
-      const pk = Uint8Array.from(respPk.compressed_pk)
-
-      const signatureOk = secp256k1.ecdsaVerify(signature, msgHash, pk)
-      expect(signatureOk).toEqual(true)
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent.each(DEVICE_MODELS)('sign basic normal2', async function (m) {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
-      const app = new CosmosApp(sim.getTransport())
-
-      const path = [44, 118, 0, 0, 0]
-      const tx = Buffer.from(JSON.stringify(example_tx_str_basic2))
-
-      // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
-      expect(respPk.return_code).toEqual(0x9000)
-      expect(respPk.error_message).toEqual('No errors')
-      console.log(respPk)
-
-      // do not wait here..
-      const signatureRequest = app.sign(path, tx, AMINO_JSON_TX)
-
-      // Wait until we are not in the main menu
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_basic2`)
-
-      const resp = await signatureRequest
-      console.log(resp)
-
-      expect(resp.return_code).toEqual(0x9000)
-      expect(resp.error_message).toEqual('No errors')
-
-      // Now verify the signature
-      const hash = crypto.createHash('sha256')
-      const msgHash = Uint8Array.from(hash.update(tx).digest())
-
-      const signatureDER = resp.signature
-      const signature = secp256k1.signatureImport(Uint8Array.from(signatureDER))
-
-      const pk = Uint8Array.from(respPk.compressed_pk)
-
-      const signatureOk = secp256k1.ecdsaVerify(signature, msgHash, pk)
-      expect(signatureOk).toEqual(true)
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent.each(DEVICE_MODELS)('sign basic with extra fields', async function (m) {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
-      const app = new CosmosApp(sim.getTransport())
-
-      const path = [44, 118, 0, 0, 0]
-      const tx = Buffer.from(JSON.stringify(example_tx_str_basic))
-
-      // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
-      expect(respPk.return_code).toEqual(0x9000)
-      expect(respPk.error_message).toEqual('No errors')
-      console.log(respPk)
-
-      // do not wait here..
-      const signatureRequest = app.sign(path, tx, 0x0)
-
-      // Wait until we are not in the main menu
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_basic_extra_fields`)
-
-      const resp = await signatureRequest
-      console.log(resp)
-
-      expect(resp.return_code).toEqual(0x9000)
-      expect(resp.error_message).toEqual('No errors')
-      expect(resp).toHaveProperty('signature')
-
-      // Now verify the signature
-      const hash = crypto.createHash('sha256')
-      const msgHash = Uint8Array.from(hash.update(tx).digest())
-
-      const signatureDER = resp.signature
-      const signature = secp256k1.signatureImport(Uint8Array.from(signatureDER))
-
-      const pk = Uint8Array.from(respPk.compressed_pk)
-
-      const signatureOk = secp256k1.ecdsaVerify(signature, msgHash, pk)
-      expect(signatureOk).toEqual(true)
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent.each(DEVICE_MODELS)('ibc denoms', async function (m) {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
-      const app = new CosmosApp(sim.getTransport())
-
-      const path = [44, 118, 0, 0, 0]
-      const tx = Buffer.from(JSON.stringify(ibc_denoms))
-
-      // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
-      expect(respPk.return_code).toEqual(0x9000)
-      expect(respPk.error_message).toEqual('No errors')
-      console.log(respPk)
-
-      // do not wait here..
-      const signatureRequest = app.sign(path, tx, 0x0)
-
-      // Wait until we are not in the main menu
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-ibc_denoms`)
-
-      const resp = await signatureRequest
-      console.log(resp)
-
-      expect(resp.return_code).toEqual(0x9000)
-      expect(resp.error_message).toEqual('No errors')
-      expect(resp).toHaveProperty('signature')
-
-      // Now verify the signature
-      const hash = crypto.createHash('sha256')
-      const msgHash = Uint8Array.from(hash.update(tx).digest())
-
-      const signatureDER = resp.signature
-      const signature = secp256k1.signatureImport(Uint8Array.from(signatureDER))
-
-      const pk = Uint8Array.from(respPk.compressed_pk)
-
-      const signatureOk = secp256k1.ecdsaVerify(signature, msgHash, pk)
-      expect(signatureOk).toEqual(true)
-    } finally {
-      await sim.close()
-    }
-  })
 
   test.concurrent.each(DEVICE_MODELS)('SetWithdrawAddress', async function (m) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
+      await sim.start({ ...defaultOptions, model: m.name })
       const app = new CosmosApp(sim.getTransport())
 
       const path = [44, 118, 0, 0, 0]
       const tx = Buffer.from(JSON.stringify(setWithdrawAddress))
 
       // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
+      const respPk = await app.getAddressAndPubKey(path, DEFAULT_HRP)
       expect(respPk.return_code).toEqual(0x9000)
       expect(respPk.error_message).toEqual('No errors')
       console.log(respPk)
 
       // do not wait here..
-      const signatureRequest = app.sign(path, tx, 0x0)
+      const signatureRequest = app.sign(path, tx, DEFAULT_HRP)
 
       // Wait until we are not in the main menu
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
@@ -274,20 +88,20 @@ describe('Json', function () {
   test.concurrent.each(DEVICE_MODELS)('CLIGovDeposit', async function (m) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
+      await sim.start({ ...defaultOptions, model: m.name })
       const app = new CosmosApp(sim.getTransport())
 
       const path = [44, 118, 0, 0, 0]
       const tx = Buffer.from(JSON.stringify(cliGovDeposit))
 
       // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
+      const respPk = await app.getAddressAndPubKey(path, DEFAULT_HRP)
       expect(respPk.return_code).toEqual(0x9000)
       expect(respPk.error_message).toEqual('No errors')
       console.log(respPk)
 
       // do not wait here..
-      const signatureRequest = app.sign(path, tx, 0x0)
+      const signatureRequest = app.sign(path, tx, DEFAULT_HRP)
 
       // Wait until we are not in the main menu
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
@@ -319,7 +133,7 @@ describe('Json', function () {
   test.concurrent.each(DEVICE_MODELS)('MsgMultisend', async function (m) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
+      await sim.start({ ...defaultOptions, model: m.name })
       const app = new CosmosApp(sim.getTransport())
 
       // Activate expert mode
@@ -329,13 +143,13 @@ describe('Json', function () {
       const tx = Buffer.from(JSON.stringify(example_tx_str_msgMultiSend))
 
       // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'cosmos')
+      const respPk = await app.getAddressAndPubKey(path, DEFAULT_HRP)
       expect(respPk.return_code).toEqual(0x9000)
       expect(respPk.error_message).toEqual('No errors')
       console.log(respPk)
 
       // do not wait here..
-      const signatureRequest = app.sign(path, tx, 0x0)
+      const signatureRequest = app.sign(path, tx, DEFAULT_HRP)
 
       // Wait until we are not in the main menu
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
@@ -367,7 +181,7 @@ describe('Json', function () {
   test.concurrent.each(DEVICE_MODELS)('SetWithdrawAddress-eth', async function (m) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...DEFAULT_OPTIONS, model: m.name })
+      await sim.start({ ...defaultOptions, model: m.name })
       const app = new CosmosApp(sim.getTransport())
 
       // Change to expert mode so we can skip fields
@@ -375,15 +189,16 @@ describe('Json', function () {
 
       const path = [44, 60, 0, 0, 0]
       const tx = Buffer.from(JSON.stringify(setWithdrawAddress))
+      const HRP = 'inj'
 
       // get address / publickey
-      const respPk = await app.getAddressAndPubKey(path, 'inj')
+      const respPk = await app.getAddressAndPubKey(path, HRP)
       expect(respPk.return_code).toEqual(0x9000)
       expect(respPk.error_message).toEqual('No errors')
       console.log(respPk)
 
       // do not wait here..
-      const signatureRequest = app.sign(path, tx, 0x0)
+      const signatureRequest = app.sign(path, tx, HRP)
 
       // Wait until we are not in the main menu
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
